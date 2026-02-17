@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Kanban Board</title>
     <style>
         * {
@@ -16,6 +16,7 @@
             background: #f5f7fa;
             min-height: 100vh;
             padding: 20px;
+            padding-bottom: 80px;
         }
         
         header {
@@ -41,6 +42,7 @@
             border-radius: 8px;
             font-size: 14px;
             width: 250px;
+            -webkit-appearance: none;
         }
         
         .btn {
@@ -51,6 +53,7 @@
             font-size: 14px;
             font-weight: 500;
             transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .btn-primary {
@@ -60,6 +63,10 @@
         
         .btn-primary:hover {
             background: #357abd;
+        }
+        
+        .btn-primary:active {
+            transform: scale(0.95);
         }
         
         .board {
@@ -74,7 +81,7 @@
             min-width: 280px;
             background: white;
             border-radius: 12px;
-            padding: 20px;
+            padding: 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
@@ -90,7 +97,8 @@
         .column-done h2 { border-color: #7ed321; color: #7ed321; }
         
         .tasks {
-            min-height: 200px;
+            min-height: 150px;
+            padding: 5px;
         }
         
         .task-card {
@@ -99,8 +107,16 @@
             padding: 15px;
             margin-bottom: 10px;
             cursor: grab;
-            transition: all 0.3s;
+            transition: all 0.2s;
             border-left: 4px solid #ccc;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            position: relative;
+        }
+        
+        .task-card:active {
+            cursor: grabbing;
         }
         
         .task-card:hover {
@@ -110,18 +126,29 @@
         
         .task-card.dragging {
             opacity: 0.5;
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            z-index: 1000;
+            position: relative;
+        }
+        
+        .task-card.drag-over {
+            border: 2px dashed #4a90d9;
+            background: #e8f4ff;
         }
         
         .task-card h3 {
             font-size: 15px;
             margin-bottom: 8px;
             color: #333;
+            word-break: break-word;
         }
         
         .task-card p {
             font-size: 13px;
             color: #666;
             margin-bottom: 10px;
+            word-break: break-word;
         }
         
         .task-actions {
@@ -130,12 +157,15 @@
         }
         
         .btn-sm {
-            padding: 5px 10px;
+            padding: 8px 12px;
             font-size: 12px;
+            min-width: 50px;
         }
         
         .btn-edit { background: #e0e0e0; color: #333; }
+        .btn-edit:active { background: #d0d0d0; }
         .btn-delete { background: #ff6b6b; color: white; }
+        .btn-delete:active { background: #ee5a5a; }
         
         .modal {
             display: none;
@@ -147,16 +177,17 @@
             background: rgba(0,0,0,0.5);
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 2000;
+            padding: 20px;
         }
         
         .modal.active { display: flex; }
         
         .modal-content {
             background: white;
-            padding: 30px;
+            padding: 25px;
             border-radius: 12px;
-            width: 90%;
+            width: 100%;
             max-width: 400px;
         }
         
@@ -174,10 +205,18 @@
         .form-group textarea,
         .form-group select {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 2px solid #ddd;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 16px;
+            -webkit-appearance: none;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4a90d9;
         }
         
         .modal-actions {
@@ -187,20 +226,23 @@
         }
         
         .btn-secondary { background: #e0e0e0; color: #333; }
+        .btn-secondary:active { background: #d0d0d0; }
         
         .toast {
             position: fixed;
             bottom: 20px;
             right: 20px;
+            left: 20px;
             padding: 15px 25px;
             border-radius: 8px;
             color: white;
-            transform: translateX(400px);
+            transform: translateX(0, 100px);
             transition: transform 0.3s;
-            z-index: 2000;
+            z-index: 3000;
+            text-align: center;
         }
         
-        .toast.show { transform: translateX(0); }
+        .toast.show { transform: translateX(0, 0); }
         .toast-success { background: #7ed321; }
         .toast-error { background: #ff6b6b; }
         
@@ -214,36 +256,67 @@
             background: rgba(0,0,0,0.5);
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 2000;
+            padding: 20px;
         }
         
         .confirm-dialog.active { display: flex; }
         
         .confirm-content {
             background: white;
-            padding: 30px;
+            padding: 25px;
             border-radius: 12px;
             text-align: center;
+            width: 100%;
+            max-width: 300px;
         }
         
         .empty-state {
             text-align: center;
             color: #999;
-            padding: 40px 20px;
+            padding: 30px 20px;
             font-size: 14px;
         }
         
+        .mobile-hint {
+            display: none;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #e8f4ff;
+            border-radius: 8px;
+        }
+        
         @media (max-width: 768px) {
-            .board { flex-direction: column; }
-            .column { min-width: 100%; }
+            body { padding: 10px; padding-bottom: 100px; }
+            .board { 
+                flex-direction: column; 
+                gap: 15px;
+            }
+            .column { 
+                min-width: 100%; 
+                padding: 10px;
+            }
             .controls { flex-direction: column; }
             .search-bar { width: 100%; }
+            .mobile-hint { display: block; }
+            .task-card { padding: 12px; }
+            .task-actions { flex-wrap: wrap; }
+            .btn-sm { flex: 1; text-align: center; }
+            .toast { 
+                left: 10px; 
+                right: 10px; 
+                bottom: 10px;
+            }
         }
     </style>
 </head>
 <body>
     <header>
         <h1>📋 Kanban Board</h1>
+        <div class="mobile-hint">📱 Drag cards to move them between columns</div>
         <div class="controls">
             <input type="text" class="search-bar" id="searchInput" placeholder="🔍 Search tasks...">
             <button class="btn btn-primary" id="addTaskBtn">+ Add Task</button>
@@ -315,6 +388,12 @@
         let tasks = [];
         let deleteId = null;
         
+        // Touch drag state
+        let touchDragItem = null;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchClone = null;
+        
         // Load tasks from localStorage
         function loadTasks() {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -373,10 +452,23 @@
                 </div>
             `;
             
+            // Desktop drag events
             card.addEventListener('dragstart', handleDragStart);
             card.addEventListener('dragend', handleDragEnd);
-            card.querySelector('.btn-edit').addEventListener('click', () => openModal(task));
-            card.querySelector('.btn-delete').addEventListener('click', () => confirmDelete(task.id));
+            
+            // Mobile touch events
+            card.addEventListener('touchstart', handleTouchStart, { passive: false });
+            card.addEventListener('touchmove', handleTouchMove, { passive: false });
+            card.addEventListener('touchend', handleTouchEnd);
+            
+            card.querySelector('.btn-edit').addEventListener('click', (e) => {
+                e.stopPropagation();
+                openModal(task);
+            });
+            card.querySelector('.btn-delete').addEventListener('click', (e) => {
+                e.stopPropagation();
+                confirmDelete(task.id);
+            });
             
             return card;
         }
@@ -387,7 +479,7 @@
             return div.innerHTML;
         }
         
-        // Drag and drop
+        // Desktop drag and drop
         let draggedTaskId = null;
         
         function handleDragStart(e) {
@@ -407,7 +499,7 @@
                 
                 const newStatus = col.id;
                 const task = tasks.find(t => t.id === draggedTaskId);
-                if (task) {
+                if (task && task.status !== newStatus) {
                     task.status = newStatus;
                     saveTasks();
                     renderTasks();
@@ -416,6 +508,101 @@
                 draggedTaskId = null;
             });
         });
+        
+        // Mobile touch drag and drop
+        function handleTouchStart(e) {
+            if (e.target.closest('.task-actions')) return;
+            
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            touchDragItem = e.currentTarget;
+            
+            // Create a clone for visual feedback
+            touchClone = touchDragItem.cloneNode(true);
+            touchClone.style.position = 'fixed';
+            touchClone.style.width = touchDragItem.offsetWidth + 'px';
+            touchClone.style.opacity = '0.8';
+            touchClone.style.zIndex = '9999';
+            touchClone.style.pointerEvents = 'none';
+            touchClone.style.transform = 'rotate(3deg)';
+            touchClone.style.boxShadow = '0 10px 30px rgba(0,0,0,0.3)';
+            document.body.appendChild(touchClone);
+            
+            updateTouchClonePosition(touch);
+            touchDragItem.classList.add('dragging');
+            
+            e.preventDefault();
+        }
+        
+        function handleTouchMove(e) {
+            if (!touchDragItem || !touchClone) return;
+            
+            const touch = e.touches[0];
+            updateTouchClonePosition(touch);
+            
+            // Find which column we're over
+            const columns = document.querySelectorAll('.tasks');
+            columns.forEach(col => {
+                const rect = col.getBoundingClientRect();
+                if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+                    touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+                    col.classList.add('drag-over');
+                } else {
+                    col.classList.remove('drag-over');
+                }
+            });
+            
+            e.preventDefault();
+        }
+        
+        function handleTouchEnd(e) {
+            if (!touchDragItem) return;
+            
+            const touch = e.changedTouches[0];
+            const taskId = parseInt(touchDragItem.dataset.id);
+            
+            // Find which column we dropped on
+            const columns = document.querySelectorAll('.tasks');
+            let newStatus = null;
+            
+            columns.forEach(col => {
+                const rect = col.getBoundingClientRect();
+                if (touch.clientX >= rect.left && touch.clientX <= rect.right &&
+                    touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+                    newStatus = col.id;
+                }
+                col.classList.remove('drag-over');
+            });
+            
+            // Update task status
+            if (newStatus) {
+                const task = tasks.find(t => t.id === taskId);
+                if (task && task.status !== newStatus) {
+                    task.status = newStatus;
+                    saveTasks();
+                    renderTasks();
+                    showToast('Task moved!');
+                }
+            }
+            
+            // Cleanup
+            if (touchClone) {
+                touchClone.remove();
+                touchClone = null;
+            }
+            if (touchDragItem) {
+                touchDragItem.classList.remove('dragging');
+                touchDragItem = null;
+            }
+        }
+        
+        function updateTouchClonePosition(touch) {
+            if (touchClone) {
+                touchClone.style.left = (touch.clientX - 20) + 'px';
+                touchClone.style.top = (touch.clientY - 20) + 'px';
+            }
+        }
         
         // Modal
         function openModal(task = null) {
