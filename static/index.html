@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        body {
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .search-bar {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            width: 250px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #4a90d9;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #357abd;
+        }
+        
+        .board {
+            display: flex;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .column {
+            flex: 1;
+            min-width: 280px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .column h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid;
+        }
+        
+        .column-todo h2 { border-color: #4a90d9; color: #4a90d9; }
+        .column-in-progress h2 { border-color: #f5a623; color: #f5a623; }
+        .column-done h2 { border-color: #7ed321; color: #7ed321; }
+        
+        .tasks {
+            min-height: 200px;
+        }
+        
+        .task-card {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: grab;
+            transition: all 0.3s;
+            border-left: 4px solid #ccc;
+        }
+        
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .task-card.dragging {
+            opacity: 0.5;
+        }
+        
+        .task-card h3 {
+            font-size: 15px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .task-card p {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .task-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        .btn-edit { background: #e0e0e0; color: #333; }
+        .btn-delete { background: #ff6b6b; color: white; }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        .btn-secondary { background: #e0e0e0; color: #333; }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            transform: translateX(400px);
+            transition: transform 0.3s;
+            z-index: 2000;
+        }
+        
+        .toast.show { transform: translateX(0); }
+        .toast-success { background: #7ed321; }
+        .toast-error { background: #ff6b6b; }
+        
+        .confirm-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .confirm-dialog.active { display: flex; }
+        
+        .confirm-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
+        
+        @media (max-width: 768px) {
+            .board { flex-direction: column; }
+            .column { min-width: 100%; }
+            .controls { flex-direction: column; }
+            .search-bar { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>📋 Kanban Board</h1>
+        <div class="controls">
+            <input type="text" class="search-bar" id="searchInput" placeholder="🔍 Search tasks...">
+            <button class="btn btn-primary" id="addTaskBtn">+ Add Task</button>
+        </div>
+    </header>
+    
+    <div class="board">
+        <div class="column column-todo">
+            <h2>📝 To Do</h2>
+            <div class="tasks" id="todo"></div>
+        </div>
+        <div class="column column-in-progress">
+            <h2>🔄 In Progress</h2>
+            <div class="tasks" id="in-progress"></div>
+        </div>
+        <div class="column column-done">
+            <h2>✅ Done</h2>
+            <div class="tasks" id="done"></div>
+        </div>
+    </div>
+    
+    <!-- Modal -->
+    <div class="modal" id="taskModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Add Task</h2>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status">
+                        <option value="todo">To Do</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Confirm Dialog -->
+    <div class="confirm-dialog" id="confirmDialog">
+        <div class="confirm-content">
+            <p>Delete this task?</p>
+            <div class="modal-actions" style="justify-content: center;">
+                <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+                <button class="btn btn-delete" id="confirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        // Storage key
+        const STORAGE_KEY = 'kanban-tasks';
+        let tasks = [];
+        let deleteId = null;
+        
+        // Load tasks from localStorage
+        function loadTasks() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            tasks = stored ? JSON.parse(stored) : [];
+        }
+        
+        // Save tasks to localStorage
+        function saveTasks() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        }
+        
+        // Show toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast toast-${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        
+        // Render tasks
+        function renderTasks() {
+            const search = searchInput.value.toLowerCase();
+            const filtered = tasks.filter(t => t.title.toLowerCase().includes(search));
+            
+            document.getElementById('todo').innerHTML = '';
+            document.getElementById('in-progress').innerHTML = '';
+            document.getElementById('done').innerHTML = '';
+            
+            ['todo', 'in-progress', 'done'].forEach(status => {
+                const col = document.getElementById(status);
+                const statusTasks = filtered.filter(t => t.status === status);
+                
+                if (statusTasks.length === 0) {
+                    col.innerHTML = '<div class="empty-state">No tasks</div>';
+                } else {
+                    statusTasks.forEach(task => {
+                        col.appendChild(createTaskCard(task));
+                    });
+                }
+            });
+        }
+        
+        // Create task card
+        function createTaskCard(task) {
+            const card = document.createElement('div');
+            card.className = 'task-card';
+            card.draggable = true;
+            card.dataset.id = task.id;
+            
+            card.innerHTML = `
+                <h3>${escapeHtml(task.title)}</h3>
+                <p>${escapeHtml(task.description) || 'No description'}</p>
+                <div class="task-actions">
+                    <button class="btn btn-sm btn-edit">Edit</button>
+                    <button class="btn btn-sm btn-delete">Delete</button>
+                </div>
+            `;
+            
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragend', handleDragEnd);
+            card.querySelector('.btn-edit').addEventListener('click', () => openModal(task));
+            card.querySelector('.btn-delete').addEventListener('click', () => confirmDelete(task.id));
+            
+            return card;
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Drag and drop
+        let draggedTaskId = null;
+        
+        function handleDragStart(e) {
+            draggedTaskId = parseInt(e.target.dataset.id);
+            e.target.classList.add('dragging');
+        }
+        
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+        
+        document.querySelectorAll('.tasks').forEach(col => {
+            col.addEventListener('dragover', e => e.preventDefault());
+            col.addEventListener('drop', e => {
+                e.preventDefault();
+                if (!draggedTaskId) return;
+                
+                const newStatus = col.id;
+                const task = tasks.find(t => t.id === draggedTaskId);
+                if (task) {
+                    task.status = newStatus;
+                    saveTasks();
+                    renderTasks();
+                    showToast('Task moved!');
+                }
+                draggedTaskId = null;
+            });
+        });
+        
+        // Modal
+        function openModal(task = null) {
+            document.getElementById('modalTitle').textContent = task ? 'Edit Task' : 'Add Task';
+            document.getElementById('taskId').value = task ? task.id : '';
+            document.getElementById('title').value = task ? task.title : '';
+            document.getElementById('description').value = task ? task.description : '';
+            document.getElementById('status').value = task ? task.status : 'todo';
+            document.getElementById('taskModal').classList.add('active');
+        }
+        
+        function closeModal() {
+            document.getElementById('taskModal').classList.remove('active');
+            document.getElementById('taskForm').reset();
+        }
+        
+        document.getElementById('addTaskBtn').addEventListener('click', () => openModal());
+        document.getElementById('cancelBtn').addEventListener('click', closeModal);
+        
+        // Form submit
+        document.getElementById('taskForm').addEventListener('submit', e => {
+            e.preventDefault();
+            
+            const id = document.getElementById('taskId').value;
+            const data = {
+                id: id ? parseInt(id) : Date.now(),
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                status: document.getElementById('status').value
+            };
+            
+            if (id) {
+                const idx = tasks.findIndex(t => t.id === parseInt(id));
+                if (idx !== -1) tasks[idx] = data;
+                showToast('Task updated!');
+            } else {
+                tasks.push(data);
+                showToast('Task created!');
+            }
+            
+            saveTasks();
+            closeModal();
+            renderTasks();
+        });
+        
+        // Delete
+        function confirmDelete(id) {
+            deleteId = id;
+            document.getElementById('confirmDialog').classList.add('active');
+        }
+        
+        document.getElementById('confirmCancel').addEventListener('click', () => {
+            document.getElementById('confirmDialog').classList.remove('active');
+            deleteId = null;
+        });
+        
+        document.getElementById('confirmDelete').addEventListener('click', () => {
+            if (deleteId) {
+                tasks = tasks.filter(t => t.id !== deleteId);
+                saveTasks();
+                renderTasks();
+                showToast('Task deleted!');
+            }
+            document.getElementById('confirmDialog').classList.remove('active');
+            deleteId = null;
+        });
+        
+        // Search
+        document.getElementById('searchInput').addEventListener('input', renderTasks);
+        
+        // Close modal on outside click
+        document.getElementById('taskModal').addEventListener('click', e => {
+            if (e.target.id === 'taskModal') closeModal();
+        });
+        
+        // Initialize
+        loadTasks();
+        renderTasks();
+    </script>
+</body>
+</html>
